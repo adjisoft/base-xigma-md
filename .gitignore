@@ -1,0 +1,6 @@
+/target
+qr.png
+*.db
+*.db-shm
+*.db-wal
+test.rs
