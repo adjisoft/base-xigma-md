@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use qrcode::QrCode;
+use wacore_binary::node::NodeContent;
 use waproto::whatsapp::device_props;
 use whatsapp_rust::bot::{Bot, MessageContext};
 use whatsapp_rust::proto_helpers::MessageExt;
@@ -9,6 +10,8 @@ use whatsapp_rust::store::SqliteStore;
 use whatsapp_rust::types::events::Event;
 use whatsapp_rust_tokio_transport::TokioWebSocketTransportFactory;
 use whatsapp_rust_ureq_http_client::UreqHttpClient;
+use std::fs;
+use std::path::Path;
 
 mod config;
 mod controller;
@@ -18,14 +21,19 @@ mod util;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=================================");
-    println!(" TembagaMD 2026 - Next generation");
+    println!(" Xigma-MD 2026 - Next generation");
     println!(" WhatsApp Bot - Rust Edition");
     println!(" github   : magercode");
-    println!(" telegram : magercoder_id");
+    println!(" telegram : xigmachat");
     println!("=================================");
     println!("Bot udah berjalan!\n");
-
-    let backend = Arc::new(SqliteStore::new("session/tembaga.db").await?);
+    
+    let folder_sesi = "session";
+    if Path::new(folder_sesi).exists() {
+    } else {
+        fs::create_dir(folder_sesi)?;
+    }
+    let backend = Arc::new(SqliteStore::new("session/bot.db").await?);
 
     let builder = Bot::builder()
         .with_backend(backend)
@@ -78,10 +86,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let from = node.attrs.get("from").map(|s| s.as_str()).unwrap_or("");
                     let n_type = node.attrs.get("type").map(|s| s.as_str()).unwrap_or("");
 
+                    /*@> abaikan sw <@*/
                     if from == "status@broadcast" || n_type == "status" {
-                        return; 
+                        return;
                     }
-                    match node.tag.as_str() {
+
+                    let action_tag = if node.tag == "notification" {
+                        node.content
+                            .as_ref()
+                            .and_then(|content| match content {
+                                NodeContent::Nodes(nodes) => {
+                                    nodes.first().map(|n| n.tag.as_str())
+                                }
+                                _ => None,
+                            })
+                            .unwrap_or(node.tag.as_str())
+                    } else {
+                        node.tag.as_str()
+                    };
+
+                    match action_tag {
                         "add" => {
                             println!("👥 User ditambahkan ke group");
                         }
@@ -124,14 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Event::Connected(_) => {
                     println!("🌐 Connected to WhatsApp servers");
                 }
-
-                Event::Receipt(receipt) => {
-                    println!("{:#?}", receipt);
-                }
-
-                _ => {
-                    println!("📨 Event lain: {:?}", event);
-                }
+                _ => {}
             }
         })
         .build()

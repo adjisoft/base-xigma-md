@@ -1,4 +1,4 @@
-use crate::util::msg::TembagaBot;
+use crate::util::msg::XigmaBot;
 use rand::prelude::*;
 use whatsapp_rust::bot::MessageContext;
 
@@ -26,5 +26,5 @@ pub async fn handle(
 
     let teks = format!("❓ *{}*\n\n🕒 Jawaban: *{}*", pertanyaan, jawaban);
 
-    TembagaBot::reply(ctx, &teks, true).await
+    XigmaBot::reply(ctx, &teks, true).await
 }

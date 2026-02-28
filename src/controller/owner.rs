@@ -1,42 +1,35 @@
-use crate::config::NOMER_OWNER;
-use crate::util::msg::TembagaBot;
+use crate::config;
+use crate::util::msg::XigmaBot;
 use whatsapp_rust::bot::MessageContext;
 
 pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Error>> {
-    let mut kontak = Vec::new();
+    let cfg = config::get_config();
+    let mut contacts = Vec::new();
 
-    for (index, own) in NOMER_OWNER.iter().enumerate() {
-        let nama_owner = if NOMER_OWNER.len() == 1 {
-            "👑 Owner Tembaga-MD".to_string()
+    for (index, owner) in cfg.no_owner.iter().enumerate() {
+        let owner_name = if cfg.no_owner.len() == 1 {
+            "Owner Xigma-MD".to_string()
+        } else if index == 0 {
+            "Owner Utama".to_string()
         } else {
-            match index {
-                0 => "👑 Owner Utama".to_string(),
-                _ => format!("🤝 Owner {}", index + 1),
-            }
+            format!("Owner {}", index + 1)
         };
 
-        kontak.push((nama_owner, *own));
+        contacts.push((owner_name, owner.as_str()));
     }
 
-    let kontak_refs: Vec<(&str, &str)> = kontak
+    let contact_refs: Vec<(&str, &str)> = contacts
         .iter()
-        .map(|(nama, no)| (nama.as_str(), *no))
+        .map(|(name, number)| (name.as_str(), *number))
         .collect();
 
-    TembagaBot::send_contacts(ctx, "👑 Tembaga-MD Owners", kontak_refs, true).await?;
+    XigmaBot::send_contacts(ctx, "Kontak Owner Xigma-MD", contact_refs, true).await?;
 
-    TembagaBot::reply(
+    XigmaBot::reply(
         ctx,
         &format!(
-            "📞 *Kontak Owner Tembaga-MD*\n\n\
-            Total owner: {}\n\n\
-            Hubungi untuk:\n\
-            - 🐛 Laporan bug\n\
-            - 💡 Saran fitur\n\
-            - 🤝 Kolaborasi\n\
-            - 🔧 Bantuan teknis\n\n\
-            _Jangan spam atau hubungi untuk hal tidak penting!_",
-            NOMER_OWNER.len()
+            "Kontak owner Xigma-MD\n\nTotal owner: {}\n\nHubungi untuk:\n- Laporan bug\n- Saran fitur\n- Kolaborasi\n- Bantuan teknis",
+            cfg.no_owner.len()
         ),
         true,
     )

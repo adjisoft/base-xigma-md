@@ -1,9 +1,9 @@
 <div align="center">
 
-# TEMBAGA-MD
+# Xigma-MD
 Ultrafast WhatsApp Bot Made with 100% Rust
 
-![TembagaBot](thumbnail.png)
+![XigmaBot](thumbnail.png)
 
 </div>
 
@@ -16,6 +16,6 @@ Ultrafast WhatsApp Bot Made with 100% Rust
 - kesabaran
 
 ### CARA JALANIN
-- edit nomor owner bagian `src/config.rs`
+- edit konfigurasi bot di `src/config.ron`
 - lalu jalankan dengan `cargo run`
 - kalo masih error itu tandanya kamu kurang sabar :v

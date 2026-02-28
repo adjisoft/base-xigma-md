@@ -1,4 +1,4 @@
-use crate::config::*;
+use crate::config;
 use wa::context_info::external_ad_reply_info as ad;
 use wacore::download::MediaType;
 use waproto::whatsapp::{self as wa};
@@ -7,9 +7,9 @@ use whatsapp_rust::upload::UploadResponse;
 //use crate::util::img;
 
 #[warn(dead_code)]
-pub struct TembagaBot;
+pub struct XigmaBot;
 
-impl TembagaBot {
+impl XigmaBot {
     pub async fn reply(
         ctx: &MessageContext,
         text: &str,
@@ -39,13 +39,14 @@ impl TembagaBot {
         ctx: &MessageContext,
         text: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let cfg = config::get_config();
         let sender = ctx.info.source.sender.to_string();
 
         let ad_info = wa::context_info::ExternalAdReplyInfo {
-            title: Some(NAMA_BOT.to_string()),
+            title: Some(cfg.nama_bot.clone()),
             body: Some("Bot WhatsApp 100% Rust 🦀".to_string()),
             media_type: Some(ad::MediaType::Image as i32),
-            thumbnail_url: Some(THUMBNAIL_URL.to_string()),
+            thumbnail_url: Some(cfg.thumbnail_url.clone()),
             media_url: Some("https://github.com/magercode".to_string()),
             render_larger_thumbnail: Some(false),
             show_ad_attribution: Some(false),
@@ -193,3 +194,4 @@ impl TembagaBot {
         Ok(())
     }
 }
+

@@ -1,17 +1,22 @@
-use crate::config::*;
+use crate::config;
 use waproto::whatsapp::{self as wa};
 use whatsapp_rust::bot::MessageContext;
-//use crate::util::img;
 
 pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Error>> {
+    let cfg = config::get_config();
     let sender = ctx.info.source.sender.to_string();
-    let nomer_sender = sender.split('@').next().unwrap_or("");
+    let sender_number = sender
+        .split('@')
+        .next()
+        .unwrap_or("")
+        .to_string();
+
     use wa::context_info::external_ad_reply_info as ad;
     let ad_info = wa::context_info::ExternalAdReplyInfo {
-        title: Some(NAMA_BOT.to_string()),
-        body: Some("Bot WhatsApp 100% Rust 🦀".to_string()),
+        title: Some(cfg.nama_bot.clone()),
+        body: Some("Bot WhatsApp 100% Rust".to_string()),
         media_type: Some(ad::MediaType::Image as i32),
-        thumbnail_url: Some(THUMBNAIL_URL.to_string()),
+        thumbnail_url: Some(cfg.thumbnail_url.clone()),
         media_url: Some("https://github.com/magercode".to_string()),
         render_larger_thumbnail: Some(true),
         show_ad_attribution: Some(false),
@@ -36,64 +41,66 @@ pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Erro
         wtwa_website_url: None,
         ad_preview_url: None,
     };
+
     let inner_ctx = wa::ContextInfo {
         stanza_id: Some(ctx.info.id.clone()),
         participant: Some(ctx.info.source.sender.to_string()),
         is_forwarded: Some(true),
         external_ad_reply: Some(ad_info),
         forwarding_score: Some(999),
-        //quoted_message: Some(ctx.message.clone()),
-        mentioned_jid: vec![sender.clone()],
+        mentioned_jid: vec![sender],
         ..Default::default()
     };
 
-    let menunya = format!(
+    let menu_text = format!(
         r#"
-📦 Menu {} 2026
-Halo @{} bot WhatsApp ini dibuat dengan 100% Rust 🦀
-*Detail Bot:*
-Nama: ```Tembaga-MD Beta```
-Prefix: ```/, !, .```
-Author: ```MagerCode````
+Menu {0} 2026
+Halo @{1}, bot WhatsApp ini dibuat dengan 100% Rust
 
-📋 List Menu:
+Detail Bot:
+Nama: Xigma-MD Beta
+Prefix: / ! .
+Author: MagerCode
 
-*Utama:*
-> • menu 
-> • ping
-> • debug
-> • owner
+List Menu:
 
-*Downloader:*
-> • igdl
-> • instagram
-> • igreel
+Utama:
+- menu
+- ping
+- debug
+- owner
 
-*Fun:*
-> • roll
-> • dadu
-> • kapan
-> • when
-> • whenyah
+Downloader:
+- igdl
+- instagram
+- igreel
 
-⚙️ Powered by Rust
+Fun:
+- roll
+- dadu
+- kapan
+- when
+- whenyah
+
+Owner Tools (owner-only):
+- /addowner <tag/reply/nomor (tanpa awalan +)>
+- setthumb https://...
 "#,
-        NAMA_BOT, nomer_sender
+        cfg.nama_bot, sender_number
     );
-    println!("{}", menunya);
 
-    let teks_menu = wa::Message {
+    let msg = wa::Message {
         extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
-            text: Some(menunya.to_string()),
-            matched_text: Some(menunya.to_string()),
+            text: Some(menu_text.clone()),
+            matched_text: Some(menu_text),
             context_info: Some(Box::new(inner_ctx)),
             ..Default::default()
         })),
         ..Default::default()
     };
 
-    if let Err(e) = ctx.send_message(teks_menu).await {
-        eprintln!("Menunya error woi: {}", e);
+    if let Err(e) = ctx.send_message(msg).await {
+        eprintln!("menu error: {}", e);
     }
 
     Ok(())

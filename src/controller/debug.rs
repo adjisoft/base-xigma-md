@@ -1,4 +1,4 @@
-use crate::config::NOMER_OWNER;
+use crate::config;
 use waproto::whatsapp as wa;
 use whatsapp_rust::bot::MessageContext;
 
@@ -6,7 +6,7 @@ pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Erro
     let raw_sender = ctx.info.source.sender.to_string();
     let sender = raw_sender.split('@').next().unwrap_or("");
 
-    if !NOMER_OWNER.contains(&sender) {
+    if !config::is_owner(sender) {
         let reply_msg = wa::Message {
             extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
                 text: Some("⚠️ Hanya owner yang boleh menggunakan command ini.".to_string()),
