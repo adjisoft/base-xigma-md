@@ -3,7 +3,7 @@
 # Xigma-MD
 Ultrafast WhatsApp Bot Made with 100% Rust
 
-![XigmaBot](thumbnail.png)
+![XigmaBot](image.png)
 
 </div>
 

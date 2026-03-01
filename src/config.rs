@@ -18,6 +18,8 @@ pub struct BotConfig {
     pub nama_bot: String,
     #[serde(rename = "THUMBNAIL_URL")]
     pub thumbnail_url: String,
+    #[serde(rename = "METHOD_LOGIN")]
+    pub method_login: String,
 }
 
 pub static CONFIG: LazyLock<RwLock<BotConfig>> = LazyLock::new(|| {

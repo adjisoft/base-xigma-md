@@ -1,8 +1,12 @@
 use crate::config;
 use waproto::whatsapp::{self as wa};
 use whatsapp_rust::bot::MessageContext;
+use crate::util::stopwatch::Stopwatch;
 
 pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Error>> {
+    let mut timer = Stopwatch::new();
+    timer.start();
+    let speed = timer.stop();
     let cfg = config::get_config();
     let sender = ctx.info.source.sender.to_string();
     let sender_number = sender
@@ -19,11 +23,11 @@ pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Erro
         thumbnail_url: Some(cfg.thumbnail_url.clone()),
         media_url: Some("https://github.com/magercode".to_string()),
         render_larger_thumbnail: Some(true),
-        show_ad_attribution: Some(false),
+        show_ad_attribution: Some(true),
         thumbnail: None,
-        source_type: None,
+        source_type: Some("ad".to_string()),
         source_id: None,
-        source_url: None,
+        source_url: Some("https://github.com/magercode".to_string()),
         contains_auto_reply: None,
         ctwa_clid: None,
         r#ref: None,
@@ -32,14 +36,14 @@ pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Erro
         source_app: None,
         automated_greeting_message_shown: None,
         greeting_message_body: None,
-        cta_payload: None,
+        cta_payload: Some("{\"action\":\"check_status\",\"id\":\"12345\"}".to_string()),
         disable_nudge: None,
         original_image_url: None,
         automated_greeting_message_cta_type: None,
         wtwa_ad_format: None,
         ad_type: None,
         wtwa_website_url: None,
-        ad_preview_url: None,
+        ad_preview_url: Some("https://github.com/magercode".to_string()),
     };
 
     let inner_ctx = wa::ContextInfo {
@@ -59,6 +63,7 @@ Halo @{1}, bot WhatsApp ini dibuat dengan 100% Rust
 
 Detail Bot:
 Nama: Xigma-MD Beta
+Speed: {2}ms
 Prefix: / ! .
 Author: MagerCode
 
@@ -82,11 +87,11 @@ Fun:
 - when
 - whenyah
 
-Owner Tools (owner-only):
-- /addowner <tag/reply/nomor (tanpa awalan +)>
+Owner:
+- addowner <tag/reply/nomor (tanpa awalan +)>
 - setthumb https://...
 "#,
-        cfg.nama_bot, sender_number
+        cfg.nama_bot, sender_number, speed.as_millis()
     );
 
     let msg = wa::Message {
@@ -105,3 +110,4 @@ Owner Tools (owner-only):
 
     Ok(())
 }
+

@@ -59,3 +59,4 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
 
     Ok(())
 }
+
