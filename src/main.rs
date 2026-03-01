@@ -41,6 +41,7 @@ async fn main() -> Result<()> {
         .to_lowercase();
 
     let folder_sesi = "session";
+    let db_path = "session/bot.db";
     if !Path::new(folder_sesi).exists() {
         fs::create_dir(folder_sesi)?;
     }
@@ -63,14 +64,16 @@ async fn main() -> Result<()> {
 
     match method_login.as_str() {
         "pairing" => {
-            let nowa = input("Masukan nomer WhatsApp (628xxxx): ");
-
-            builder = builder.with_pair_code(PairCodeOptions {
-                phone_number: nowa,
-                ..Default::default()
-            });
-
-            println!("Login menggunakan Pair Code...");
+            if !Path::new(db_path).exists() {
+                let nowa = input("Masukan nomer WhatsApp (628xxxx): ");
+                builder = builder.with_pair_code(PairCodeOptions {
+                    phone_number: nowa,
+                    ..Default::default()
+                });
+                println!("Login menggunakan Pair Code...");
+            } else {
+                println!("Data sesi ditemukan, mencoba login dengan sesi yang tersimpan...");
+            }
         }
         "qrcode" => {
             println!("Login menggunakan QR Code...");
