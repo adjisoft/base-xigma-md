@@ -1,6 +1,98 @@
-use crate::{controller, util::msg::XigmaBot};
-use waproto::whatsapp as wa;
+use crate::{config, controller, util::msg::XigmaBot};
+use std::collections::HashMap;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
+use tokio::time::{Duration, Instant};
 use whatsapp_rust::bot::MessageContext;
+
+const BASE_COMMAND_DELAY_SECS: u64 = 2;
+const MAX_SPAM_PENALTY_SECS: u64 = 30;
+
+#[derive(Clone, Copy)]
+struct SpamState {
+    last_command_at: Instant,
+    blocked_until: Option<Instant>,
+    strikes: u8,
+}
+
+static SPAM_GUARD: LazyLock<Mutex<HashMap<String, SpamState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+async fn blocked_by_mode(ctx: &MessageContext) -> Result<bool, Box<dyn std::error::Error>> {
+    if !config::is_self_mode() {
+        return Ok(false);
+    }
+
+    let sender = ctx.info.source.sender.to_string();
+    if ctx.info.source.is_from_me || config::is_owner(&sender) {
+        return Ok(false);
+    }
+
+    XigmaBot::reply(
+        ctx,
+        "Bot sedang di mode self. Hanya owner yang bisa memakai perintah.",
+        true,
+    )
+    .await?;
+    Ok(true)
+}
+
+async fn blocked_by_spam(ctx: &MessageContext) -> Result<bool, Box<dyn std::error::Error>> {
+    let sender = ctx.info.source.sender.to_string();
+    if ctx.info.source.is_from_me || config::is_owner(&sender) {
+        return Ok(false);
+    }
+
+    let key = sender;
+    let now = Instant::now();
+    let mut state_map = SPAM_GUARD.lock().await;
+    let state = state_map.entry(key).or_insert(SpamState {
+        last_command_at: now - Duration::from_secs(BASE_COMMAND_DELAY_SECS),
+        blocked_until: None,
+        strikes: 0,
+    });
+
+    if let Some(until) = state.blocked_until
+        && now < until
+    {
+        let remaining = until.duration_since(now).as_secs().max(1);
+        drop(state_map);
+        XigmaBot::reply(
+            ctx,
+            &format!("Terlalu cepat kirim perintah. Tunggu {} detik lagi.", remaining),
+            true,
+        )
+        .await?;
+        return Ok(true);
+    }
+
+    let since_last = now.duration_since(state.last_command_at);
+    state.last_command_at = now;
+    state.blocked_until = None;
+
+    if since_last < Duration::from_secs(BASE_COMMAND_DELAY_SECS) {
+        state.strikes = state.strikes.saturating_add(1).min(10);
+        let penalty = (u64::from(state.strikes) * 2).min(MAX_SPAM_PENALTY_SECS);
+        state.blocked_until = Some(now + Duration::from_secs(penalty));
+        drop(state_map);
+        XigmaBot::reply(
+            ctx,
+            &format!(
+                "Anti-spam aktif. Kamu kena delay {} detik karena terlalu cepat.",
+                penalty
+            ),
+            true,
+        )
+        .await?;
+        return Ok(true);
+    }
+
+    if state.strikes > 0 {
+        state.strikes -= 1;
+    }
+
+    Ok(false)
+}
 
 pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn std::error::Error>> {
     let text = text.trim();
@@ -21,6 +113,14 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
     let cmd = bagian.next().unwrap_or("");
     let args = bagian.collect::<Vec<&str>>().join(" ");
 
+    if blocked_by_mode(ctx).await? {
+        return Ok(());
+    }
+
+    if blocked_by_spam(ctx).await? {
+        return Ok(());
+    }
+
     match cmd {
         /*@> menu & testing<@*/
         "menu" | "help" => controller::menu::handle(ctx).await?,
@@ -31,12 +131,24 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
         "ping" | "speed" => controller::ping::handle(ctx).await?,
         "owner" | "own" => controller::owner::handle(ctx).await?,
         "addowner" => controller::owner_tools::add_owner(ctx, &args).await?,
+        "mode" | "setmode" => controller::owner_tools::set_mode(ctx, &args).await?,
         "setthumb" | "setthumbnail" => controller::owner_tools::set_thumbnail(ctx, &args).await?,
+        "gid" | "groupid" => controller::group_tools::group_id(ctx).await?,
+        "bl" | "blacklist" => controller::group_tools::blacklist(ctx, &args).await?,
+        "bcg" | "bcgroup" | "broadcastgroup" => {
+            controller::group_tools::broadcast_groups(ctx, &args).await?
+        }
+        "gstatus" | "swgc" => controller::swgc::handle(ctx, &args).await?,
+        "ytsearch" => controller::ytdl::ytsearch(ctx, &args).await?,
+        "ytmp3" => controller::ytdl::ytmp3(ctx, &args).await?,
+        "ytmp4" => controller::ytdl::ytmp4(ctx, &args).await?,
+        "play" | "song" => controller::ytdl::play_or_song(ctx, &args).await?,
+        "sticker" | "s" | "stiker" => controller::sticker::to_sticker(ctx).await?,
+        "toimg" | "tovid" => controller::sticker::sticker_to_media(ctx).await?,
         "igdl" | "igreel" | "instagram" => {
             if args.is_empty() {
-                let _ =
-                    XigmaBot::reply(ctx, "📌 *Contoh:* .igdl https://instagram.com/xxx", true)
-                        .await?;
+                let _ = XigmaBot::reply(ctx, "📌 *Contoh:* .igdl https://instagram.com/xxx", true)
+                    .await?;
                 return Ok(());
             }
             controller::downloader_igreel::handle(ctx, &args).await?
@@ -49,14 +161,9 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
             controller::fun_kapan::handle(ctx, &args).await?
         }
         _ => {
-            ctx.send_message(wa::Message {
-                conversation: Some("Coba ketik .menu".to_string()),
-                ..Default::default()
-            })
-            .await?;
+            XigmaBot::react(ctx, "🦀").await?;
         }
     }
 
     Ok(())
 }
-

@@ -1,18 +1,15 @@
 use crate::util::msg::XigmaBot;
-use crate::util::stopwatch::Stopwatch;
+use std::time::Instant;
 use whatsapp_rust::bot::MessageContext;
 
 pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Error>> {
-    let mut timer = Stopwatch::new();
-    timer.start();
+    let start = Instant::now();
 
     XigmaBot::reply(ctx, "Pong!!", true).await?;
 
-    let kecepatan = timer.stop();
-    let pesan = format!(
-        "Speed: ```{}ms```\n> Xigma-MD 2026",
-        kecepatan.as_millis()
-    );
+    let duration = start.elapsed();
+
+    let pesan = format!("Speed: ```{} ms```\n> Xigma-MD 2026", duration.as_millis());
 
     XigmaBot::reply_ad(ctx, &pesan).await?;
 

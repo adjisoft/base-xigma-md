@@ -60,10 +60,7 @@ async fn ensure_owner(ctx: &MessageContext) -> Result<bool, Box<dyn std::error::
     Ok(false)
 }
 
-pub async fn add_owner(
-    ctx: &MessageContext,
-    args: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn add_owner(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !ensure_owner(ctx).await? {
         return Ok(());
     }
@@ -103,6 +100,35 @@ pub async fn set_thumbnail(
     match config::set_thumbnail_url(args) {
         Ok(()) => XigmaBot::reply(ctx, "Thumbnail bot berhasil diubah.", true).await?,
         Err(e) => XigmaBot::reply(ctx, &format!("Gagal ubah thumbnail: {}", e), true).await?,
+    }
+
+    Ok(())
+}
+
+pub async fn set_mode(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if !ensure_owner(ctx).await? {
+        return Ok(());
+    }
+
+    let mode = args.trim().to_lowercase();
+    if mode.is_empty() {
+        let current = config::bot_mode();
+        XigmaBot::reply(
+            ctx,
+            &format!("Mode saat ini: `{}`\nContoh: /mode self atau /mode public", current),
+            true,
+        )
+        .await?;
+        return Ok(());
+    }
+
+    match config::set_bot_mode(&mode) {
+        Ok(()) => {
+            XigmaBot::reply(ctx, &format!("Mode bot diubah ke `{}`.", mode), true).await?;
+        }
+        Err(e) => {
+            XigmaBot::reply(ctx, &format!("Gagal ubah mode: {}", e), true).await?;
+        }
     }
 
     Ok(())

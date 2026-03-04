@@ -15,7 +15,12 @@ pub async fn handle(
         return Ok(());
     }
 
-    XigmaBot::reply(ctx, "Tunggu bentar...", true).await?;
+    XigmaBot::reply(
+        ctx,
+        "Tunggu bentar...\n(Kalo gak ke kirim kirim brati timeout/gagal)",
+        true,
+    )
+    .await?;
 
     let apinya = igdl::download_instagram_reel(instagram_url).await?;
 

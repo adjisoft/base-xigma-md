@@ -4,7 +4,6 @@ use wacore::download::MediaType;
 use waproto::whatsapp::{self as wa};
 use whatsapp_rust::bot::MessageContext;
 use whatsapp_rust::upload::UploadResponse;
-//use crate::util::img;
 
 #[warn(dead_code)]
 pub struct XigmaBot;
@@ -19,7 +18,7 @@ impl XigmaBot {
         if quoted {
             context_info.stanza_id = Some(ctx.info.id.clone());
             context_info.participant = Some(ctx.info.source.sender.to_string());
-            context_info.quoted_message = Some(ctx.message.clone());
+            context_info.quoted_message = None;
         }
         let msg = wa::Message {
             extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
@@ -44,13 +43,32 @@ impl XigmaBot {
 
         let ad_info = wa::context_info::ExternalAdReplyInfo {
             title: Some(cfg.nama_bot.clone()),
-            body: Some("Bot WhatsApp 100% Rust 🦀".to_string()),
+            body: Some("Bot WhatsApp 100% Rust".to_string()),
             media_type: Some(ad::MediaType::Image as i32),
             thumbnail_url: Some(cfg.thumbnail_url.clone()),
             media_url: Some("https://github.com/magercode".to_string()),
-            render_larger_thumbnail: Some(false),
+            render_larger_thumbnail: Some(true),
             show_ad_attribution: Some(false),
-            ..Default::default()
+            thumbnail: None,
+            source_type: None,
+            source_id: None,
+            source_url: Some("https://github.com/magercode".to_string()),
+            contains_auto_reply: None,
+            ctwa_clid: None,
+            r#ref: None,
+            click_to_whatsapp_call: None,
+            ad_context_preview_dismissed: None,
+            source_app: None,
+            automated_greeting_message_shown: None,
+            greeting_message_body: None,
+            cta_payload: None,
+            disable_nudge: None,
+            original_image_url: None,
+            automated_greeting_message_cta_type: None,
+            wtwa_ad_format: None,
+            ad_type: None,
+            wtwa_website_url: None,
+            ad_preview_url: Some("https://github.com/magercode".to_string()),
         };
 
         let ctx_info = wa::ContextInfo {
@@ -110,7 +128,7 @@ impl XigmaBot {
         if quoted {
             context_info.stanza_id = Some(ctx.info.id.clone());
             context_info.participant = Some(ctx.info.source.sender.to_string());
-            context_info.quoted_message = Some(ctx.message.clone());
+            context_info.quoted_message = None;
         }
 
         let client = reqwest::Client::builder()
@@ -169,7 +187,7 @@ impl XigmaBot {
         if quoted {
             context_info.stanza_id = Some(ctx.info.id.clone());
             context_info.participant = Some(ctx.info.source.sender.to_string());
-            context_info.quoted_message = Some(ctx.message.clone());
+            context_info.quoted_message = None;
         }
 
         let contact_list = contacts
@@ -194,4 +212,3 @@ impl XigmaBot {
         Ok(())
     }
 }
-

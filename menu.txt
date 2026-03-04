@@ -1,0 +1,32 @@
+Menu Xigma-MD 2026
+Halo @58313374978120
+
+Informasi Bot:
+- Nama: Xigma-MD
+- Prefix: / ! .
+- Mode: public
+- Total owner: 2
+- Sumber daftar command: src/handler.rs
+
+Daftar Command (auto-sync):
+*- /menu, /help
+- /debug, /d
+- /dadu, /roll
+- /ping, /speed
+- /owner, /own
+- /addowner <nomor/tag/reply>
+- /mode, /setmode <self|public>
+- /setthumb, /setthumbnail <url>
+- /gid, /groupid
+- /ibtn, /interactive, /button, /buttons <all|list|quick|url> [teks]
+- /bl, /blacklist <id_grup (opsional)>
+- /bcg, /bcgroup, /broadcastgroup <teks/reply media> -d=<detik>
+- /gstatus, /swgc <teks/reply media> -d=<detik>
+- /ytsearch <kueri>
+- /ytmp3 <url>
+- /ytmp4 <url>
+- /play, /song <kueri lagu>
+- /sticker, /s, /stiker
+- /toimg, /tovid
+- /igdl, /igreel, /instagram <url>
+- /kapan, /when, /whenyah <teks>*

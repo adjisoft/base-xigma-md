@@ -42,16 +42,22 @@ pub async fn handle(ctx: &MessageContext) -> Result<(), Box<dyn std::error::Erro
     }
 
     let base = ctx.message.get_base_message();
-    let quoted_msg_struct = extract_context_info(base).and_then(|info| info.quoted_message.as_ref());
+    let quoted_msg_struct =
+        extract_context_info(base).and_then(|info| info.quoted_message.as_ref());
 
     let ron_text = match quoted_msg_struct {
-        Some(msg) => ron::ser::to_string_pretty(msg, PrettyConfig::new().separate_tuple_members(true))
-            .unwrap_or_else(|_| format!("(fallback_debug: {:?})", msg)),
+        Some(msg) => {
+            ron::ser::to_string_pretty(msg, PrettyConfig::new().separate_tuple_members(true))
+                .unwrap_or_else(|_| format!("(fallback_debug: {:?})", msg))
+        }
         None => {
             let _ = ctx
                 .send_message(wa::Message {
                     extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
-                        text: Some("Pesan yang diquoted mungkin tidak didukung atau belum diquote!.".to_string()),
+                        text: Some(
+                            "Pesan yang diquoted mungkin tidak didukung atau belum diquote!."
+                                .to_string(),
+                        ),
                         ..Default::default()
                     })),
                     ..Default::default()

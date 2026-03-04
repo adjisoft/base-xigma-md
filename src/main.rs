@@ -1,19 +1,19 @@
-use std::sync::Arc;
 use anyhow::Result;
 use qrcode::QrCode;
+use std::sync::Arc;
 use wacore_binary::node::NodeContent;
 use waproto::whatsapp::device_props;
 use whatsapp_rust::bot::{Bot, MessageContext};
+use whatsapp_rust::pair_code::PairCodeOptions;
 use whatsapp_rust::proto_helpers::MessageExt;
 use whatsapp_rust::store::SqliteStore;
 use whatsapp_rust::types::events::Event;
 use whatsapp_rust_tokio_transport::TokioWebSocketTransportFactory;
 use whatsapp_rust_ureq_http_client::UreqHttpClient;
-use whatsapp_rust::pair_code::PairCodeOptions;
 
 use std::fs;
+use std::io::{self, Write};
 use std::path::Path;
-use std::io::{Write, self};
 
 mod config;
 mod controller;
@@ -29,19 +29,24 @@ fn input(prompt: &str) -> String {
     buffer.trim().to_string()
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_stack_size(8 * 1024 * 1024)
+        .build()?;
+    runtime.block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     println!("=================================");
     println!(" Xigma-MD 2026 - Next generation");
     println!(" WhatsApp Bot - Rust Edition");
     println!("=================================\n");
 
-    let method_login = config::get_config()
-        .method_login
-        .to_lowercase();
+    let method_login = config::get_config().method_login.to_lowercase();
 
     let folder_sesi = "session";
-    let db_path = "session/bot.db";
+    let phone_path = "session/phone.txt";
     if !Path::new(folder_sesi).exists() {
         fs::create_dir(folder_sesi)?;
     }
@@ -64,132 +69,153 @@ async fn main() -> Result<()> {
 
     match method_login.as_str() {
         "pairing" => {
-            if !Path::new(db_path).exists() {
-                let nowa = input("Masukan nomer WhatsApp (628xxxx): ");
-                builder = builder.with_pair_code(PairCodeOptions {
-                    phone_number: nowa,
-                    ..Default::default()
-                });
-                println!("Login menggunakan Pair Code...");
+            let phone_number = if Path::new(phone_path).exists() {
+                println!("Nomor ditemukan di file sesi...");
+                fs::read_to_string(phone_path)?.trim().to_string()
             } else {
-                println!("Data sesi ditemukan, mencoba login dengan sesi yang tersimpan...");
-            }
+                let nowa = input("Masukan nomer WhatsApp (628xxxx): ");
+                fs::write(phone_path, &nowa)?;
+                nowa
+            };
+
+            builder = builder.with_pair_code(PairCodeOptions {
+                phone_number,
+                ..Default::default()
+            });
+
+            println!("Login menggunakan Pair Code...");
         }
+
         "qrcode" => {
             println!("Login menggunakan QR Code...");
         }
+
         _ => {
             println!("Method login tidak dikenali, fallback ke QR Code...");
         }
     }
 
+    let login_method = method_login.clone();
+
     let mut bot = builder
-        .on_event(move |event, client| async move {
-            match event {
+        .on_event(move |event, client| {
+            let login_method = login_method.clone();
 
-                Event::PairingQrCode { code, timeout } => {
-                    match QrCode::new(code.as_bytes()) {
-                        Ok(qr) => {
-                            let qr_string = qr
-                                .render::<char>()
-                                .quiet_zone(true)
-                                .module_dimensions(2, 1)
-                                .dark_color('#')
-                                .light_color(' ')
-                                .build();
-
-                            println!("\nScan QR berikut:\n");
-                            println!("{qr_string}");
-                            println!("QR berlaku {} detik\n", timeout.as_secs());
+            async move {
+                match event {
+                    Event::PairingQrCode { code, timeout } => {
+                        if login_method != "qrcode" {
+                            return;
                         }
-                        Err(e) => {
-                            eprintln!("Gagal generate QR: {}", e);
-                        }
-                    }
-                }
 
-                Event::PairingCode { code, timeout } => {
-                    println!("\n=================================");
-                    println!("PAIR CODE ({} detik)", timeout.as_secs());
-                    println!("Masukan kode ini di:");
-                    println!("WhatsApp > Linked Devices > Link with phone number\n");
-                    println!(">>> {} <<<", code);
-                    println!("=================================\n");
-                }
+                        match QrCode::new(code.as_bytes()) {
+                            Ok(qr) => {
+                                let qr_string = qr
+                                    .render::<char>()
+                                    .quiet_zone(true)
+                                    .module_dimensions(2, 1)
+                                    .dark_color('#')
+                                    .light_color(' ')
+                                    .build();
 
-                Event::PairSuccess(success) => {
-                    println!("✅ Berhasil login sebagai: {}", success.id);
-                }
-
-                Event::Message(msg, info) => {
-                    let ctx = MessageContext {
-                        message: msg,
-                        info,
-                        client,
-                    };
-
-                    if let Some(text) = ctx
-                        .message
-                        .text_content()
-                        .or_else(|| ctx.message.get_caption())
-                    {
-                        if let Err(e) = handler::dispatch(&ctx, text).await {
-                            eprintln!("Handler error: {:?}", e);
+                                println!("\nScan QR berikut:\n");
+                                println!("{qr_string}");
+                                println!("QR berlaku {} detik\n", timeout.as_secs());
+                            }
+                            Err(e) => {
+                                eprintln!("Gagal generate QR: {}", e);
+                            }
                         }
                     }
-                }
 
-                Event::Notification(node) => {
-                    let from = node.attrs.get("from").map(|s| s.as_str()).unwrap_or("");
-                    let n_type = node.attrs.get("type").map(|s| s.as_str()).unwrap_or("");
+                    Event::PairingCode { code, timeout } => {
+                        if login_method != "pairing" {
+                            return;
+                        }
 
-                    if from == "status@broadcast" || n_type == "status" {
-                        return;
+                        println!("\n=================================");
+                        println!("PAIR CODE ({} detik)", timeout.as_secs());
+                        println!("Masukan kode ini di:");
+                        println!("WhatsApp > Linked Devices > Link with phone number\n");
+                        println!(">>> {} <<<", code);
+                        println!("=================================\n");
                     }
 
-                    let action_tag = if node.tag == "notification" {
-                        node.content
-                            .as_ref()
-                            .and_then(|content| match content {
-                                NodeContent::Nodes(nodes) => {
-                                    nodes.first().map(|n| n.tag.as_str())
-                                }
-                                _ => None,
-                            })
-                            .unwrap_or(node.tag.as_str())
-                    } else {
-                        node.tag.as_str()
-                    };
-
-                    match action_tag {
-                        "add" => println!("👥 User ditambahkan ke group"),
-                        "remove" => println!("👥 User dihapus dari group"),
-                        "promote" => println!("⭐ User dipromosikan jadi admin"),
-                        "demote" => println!("⬇️ User diturunkan dari admin"),
-                        "announcement" => println!("📢 Group jadi announcement"),
-                        "not_announcement" => println!("📢 Announcement dimatikan"),
-                        "locked" => println!("🔒 Group dikunci"),
-                        _ => println!("📱 Notifikasi lain: {}", action_tag),
+                    Event::PairSuccess(success) => {
+                        println!("✅ Berhasil login sebagai: {}", success.id);
                     }
-                }
 
-                Event::Disconnected(reason) => {
-                    println!("❌ Disconnected: {:?}", reason);
-                }
+                    Event::Connected(_) => {
+                        println!("🌐 Connected to WhatsApp servers");
+                    }
 
-                Event::LoggedOut(logged_out) => {
-                    println!("🚪 Logged out: {:?}", logged_out.reason);
-                }
+                    Event::Message(msg, info) => {
+                        let ctx = MessageContext {
+                            message: msg,
+                            info,
+                            client,
+                        };
+                        //println!("{:#?}", ctx.message);
 
-                Event::ClientOutdated(info) => {
-                    println!("⚠️ Client WhatsApp outdated!\n{:?}", info);
-                }
+                        if let Some(text) = ctx
+                            .message
+                            .text_content()
+                            .or_else(|| ctx.message.get_caption())
+                        {
+                            if let Err(e) = handler::dispatch(&ctx, text).await {
+                                eprintln!("Handler error: {:?}", e);
+                            }
+                        }
+                    }
 
-                Event::Connected(_) => {
-                    println!("🌐 Connected to WhatsApp servers");
-                }
+                    Event::Disconnected(reason) => {
+                        println!("❌ Disconnected: {:?}", reason);
+                    }
 
-                _ => {}
+                    Event::LoggedOut(logged_out) => {
+                        println!("🚪 Logged out: {:?}", logged_out.reason);
+                    }
+
+                    Event::ClientOutdated(info) => {
+                        println!("⚠️ Client outdated!\n{:?}", info);
+                    }
+
+                    Event::Notification(node) => {
+                        let from = node.attrs.get("from").map(|s| s.as_str()).unwrap_or("");
+                        let n_type = node.attrs.get("type").map(|s| s.as_str()).unwrap_or("");
+
+                        if from == "status@broadcast" || n_type == "status" {
+                            return;
+                        }
+
+                        let action_tag = if node.tag == "notification" {
+                            node.content
+                                .as_ref()
+                                .and_then(|content| match content {
+                                    NodeContent::Nodes(nodes) => {
+                                        nodes.first().map(|n| n.tag.as_str())
+                                    }
+                                    _ => None,
+                                })
+                                .unwrap_or(node.tag.as_str())
+                        } else {
+                            node.tag.as_str()
+                        };
+
+                        match action_tag {
+                            "add" => println!("👥 User ditambahkan ke group"),
+                            "remove" => println!("👥 User dihapus dari group"),
+                            "promote" => println!("⭐ User jadi admin"),
+                            "demote" => println!("⬇️ User bukan admin lagi"),
+                            "announcement" => println!("📢 Group jadi announcement"),
+                            "not_announcement" => println!("📢 Announcement dimatikan"),
+                            "locked" => println!("🔒 Group dikunci"),
+                            _ => println!("📱 Notifikasi lain: {}", action_tag),
+                        }
+                    }
+
+                    _ => {}
+                }
             }
         })
         .build()

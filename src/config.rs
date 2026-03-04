@@ -1,11 +1,15 @@
 use std::fs;
 use std::sync::{LazyLock, RwLock};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
-const CONFIG_PATH: &str = "src/config.ron";
+const CONFIG_PATH: &str = "config.ron";
+
+fn default_bot_mode() -> String {
+    "public".to_string()
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename = "BotConfig")]
@@ -20,10 +24,14 @@ pub struct BotConfig {
     pub thumbnail_url: String,
     #[serde(rename = "METHOD_LOGIN")]
     pub method_login: String,
+    #[serde(rename = "BOT_MODE", default = "default_bot_mode")]
+    pub bot_mode: String,
+    #[serde(rename = "BLACKLIST_GROUP", default)]
+    pub blacklist_group: Vec<String>,
 }
 
 pub static CONFIG: LazyLock<RwLock<BotConfig>> = LazyLock::new(|| {
-    let cfg = load_config().expect("config.ron tidak valid. Periksa format di src/config.ron");
+    let cfg = load_config().expect("config.ron tidak valid. Periksa format di config.ron");
     RwLock::new(cfg)
 });
 
@@ -46,14 +54,36 @@ fn save_config(cfg: &BotConfig) -> Result<()> {
 }
 
 pub fn get_config() -> BotConfig {
-    CONFIG
-        .read()
-        .expect("gagal read lock config")
-        .clone()
+    CONFIG.read().expect("gagal read lock config").clone()
 }
 
 fn normalize_digits(input: &str) -> String {
     input.chars().filter(|c| c.is_ascii_digit()).collect()
+}
+
+fn normalize_group_jid(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some((left, right)) = trimmed.split_once('@') {
+        if !right.eq_ignore_ascii_case("g.us") {
+            return None;
+        }
+        let digits = normalize_digits(left);
+        if digits.is_empty() {
+            return None;
+        }
+        return Some(format!("{}@g.us", digits));
+    }
+
+    let digits = normalize_digits(trimmed);
+    if digits.is_empty() {
+        None
+    } else {
+        Some(format!("{}@g.us", digits))
+    }
 }
 
 pub fn is_owner(raw_sender: &str) -> bool {
@@ -117,4 +147,59 @@ pub fn set_thumbnail_url(url: &str) -> Result<()> {
     cfg.thumbnail_url = trimmed.to_string();
     save_config(&cfg)?;
     Ok(())
+}
+
+pub fn bot_mode() -> String {
+    let cfg = CONFIG.read().expect("gagal read lock config");
+    cfg.bot_mode.to_lowercase()
+}
+
+pub fn is_self_mode() -> bool {
+    bot_mode() == "self"
+}
+
+pub fn set_bot_mode(mode: &str) -> Result<()> {
+    let normalized = mode.trim().to_lowercase();
+    if normalized != "self" && normalized != "public" {
+        return Err(anyhow!("mode harus `self` atau `public`"));
+    }
+
+    let mut cfg = CONFIG.write().expect("gagal write lock config");
+    cfg.bot_mode = normalized;
+    save_config(&cfg)?;
+    Ok(())
+}
+
+pub fn normalize_group_target(raw_group: &str) -> Option<String> {
+    normalize_group_jid(raw_group)
+}
+
+pub fn is_group_blacklisted(raw_group: &str) -> bool {
+    let Some(target) = normalize_group_jid(raw_group) else {
+        return false;
+    };
+
+    let cfg = CONFIG.read().expect("gagal read lock config");
+    cfg.blacklist_group.iter().any(|saved| {
+        normalize_group_jid(saved)
+            .map(|jid| jid == target)
+            .unwrap_or(false)
+    })
+}
+
+pub fn add_blacklist_group(raw_group: &str) -> Result<bool> {
+    let target = normalize_group_jid(raw_group).ok_or_else(|| anyhow!("ID grup tidak valid"))?;
+    let mut cfg = CONFIG.write().expect("gagal write lock config");
+
+    if cfg.blacklist_group.iter().any(|saved| {
+        normalize_group_jid(saved)
+            .map(|jid| jid == target)
+            .unwrap_or(false)
+    }) {
+        return Ok(false);
+    }
+
+    cfg.blacklist_group.push(target);
+    save_config(&cfg)?;
+    Ok(true)
 }
