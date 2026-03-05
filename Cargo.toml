@@ -24,3 +24,7 @@ wacore = "0.2.0"
 anyhow = "1.0.101"
 chrono = "0.4.43"
 wacore-binary = "0.2.0"
+futures = "0.3.31"
+
+[target.aarch64-linux-android]
+linker = "/home/chi/android-sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang"

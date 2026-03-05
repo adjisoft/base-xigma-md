@@ -111,7 +111,7 @@ pub async fn ytmp3(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std::
     XigmaBot::reply(
         ctx,
         &format!(
-            "Sedang mengunduh audio dari YouTube...\nTotal URL: {}\nSmart multiprocessing: {} worker\nTuning CPU: {}% thread perangkat ({} dari {} thread).",
+            "Sedang mengunduh audio dari YouTube...\nTotal URL: {}\nMultiprocessing: {} worker\nTuning CPU: {}% thread perangkat ({} dari {} thread).",
             total,
             workers,
             THREAD_USAGE_PERCENT,
