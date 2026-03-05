@@ -91,7 +91,7 @@ cargo check
 File: `config.ron`
 
 Field utama:
-- `NO_OWNER`: daftar nomor owner (tanpa `+`, bisa campur format digit/JID)
+- `NO_OWNER`: daftar nomor owner (harus LID login dulu bot nya baru gunakan /getlid <tag/reply> untuk dapetin lid)
 - `NAMA_OWNER`: nama owner utama (metadata sticker)
 - `NAMA_BOT`: nama bot
 - `THUMBNAIL_URL`: thumbnail untuk beberapa reply/ad context
@@ -103,7 +103,7 @@ Contoh:
 
 ```ron
 (
-    NO_OWNER: ["628xxxxxxxxxx"],
+    NO_OWNER: ["160933095698680"],
     NAMA_OWNER: "adjisoft",
     NAMA_BOT: "Xigma-MD",
     THUMBNAIL_URL: "https://example.com/thumb.jpg",

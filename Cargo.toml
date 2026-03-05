@@ -1,6 +1,6 @@
 [package]
 name = "xigma-md"
-version = "0.1.0"
+version = "0.4.2"
 edition = "2024"
 
 [dependencies]
@@ -25,6 +25,3 @@ anyhow = "1.0.101"
 chrono = "0.4.43"
 wacore-binary = "0.2.0"
 futures = "0.3.31"
-
-[target.aarch64-linux-android]
-linker = "/home/chi/android-sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang"
