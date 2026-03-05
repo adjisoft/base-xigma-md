@@ -5,3 +5,4 @@ qr.png
 *.db-wal
 test.rs
 /message_debugs
+/session
