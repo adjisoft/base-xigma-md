@@ -125,6 +125,7 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
         /*@> menu & testing<@*/
         "menu" | "help" => controller::menu::handle(ctx).await?,
         "debug" | "d" => controller::debug::handle(ctx).await?,
+        "getlid" | "lid" => controller::get_lid::handle(ctx).await?,
 
         /*@> fun & downloader <@*/
         "dadu" | "roll" => controller::fun_dadu::handle(ctx).await?,
@@ -142,6 +143,7 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
         "ytsearch" => controller::ytdl::ytsearch(ctx, &args).await?,
         "ytmp3" => controller::ytdl::ytmp3(ctx, &args).await?,
         "ytmp4" => controller::ytdl::ytmp4(ctx, &args).await?,
+        "aio" => controller::ytdl::aio(ctx, &args).await?,
         "play" | "song" => controller::ytdl::play_or_song(ctx, &args).await?,
         "sticker" | "s" | "stiker" => controller::sticker::to_sticker(ctx).await?,
         "toimg" | "tovid" => controller::sticker::sticker_to_media(ctx).await?,
