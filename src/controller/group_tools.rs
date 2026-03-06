@@ -8,9 +8,6 @@ use whatsapp_rust::bot::MessageContext;
 use whatsapp_rust::download::MediaType;
 use whatsapp_rust::proto_helpers::MessageExt;
 
-const DEFAULT_DELAY_SECS: u64 = 3;
-const MIN_DELAY_SECS: u64 = 3;
-
 enum MediaRef<'a> {
     Image(&'a wa::message::ImageMessage),
     Video(&'a wa::message::VideoMessage),
@@ -45,13 +42,9 @@ fn resolve_group_target(ctx: &MessageContext, args: &str) -> Option<String> {
 }
 
 fn text_message(text: &str) -> wa::Message {
-    let ad_context = ad_context_info();
+    let rpm_info = rpm_info(text);
     wa::Message {
-        extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
-            text: Some(text.to_string()),
-            context_info: Some(Box::new(ad_context)),
-            ..Default::default()
-        })),
+        request_payment_message: Some(Box::new(rpm_info)),
         ..Default::default()
     }
 }
@@ -96,6 +89,34 @@ fn ad_context_info() -> wa::ContextInfo {
     }
 }
 
+fn rpm_info(note_text: &str) -> wa::message::RequestPaymentMessage {
+    let note_text = if note_text.trim().is_empty() {
+        "Payment request info"
+    } else {
+        note_text
+    };
+
+    wa::message::RequestPaymentMessage {
+        note_message: Some(Box::new(wa::Message {
+            extended_text_message: Some(Box::new(wa::message::ExtendedTextMessage {
+                text: Some(note_text.to_string()),
+                ..Default::default()
+            })),
+            ..Default::default()
+        })),
+        currency_code_iso4217: Some("IDR".to_string()),
+        amount1000: Some(10_000),
+        request_from: None,
+        expiry_timestamp: Some(0),
+        amount: Some(wa::Money {
+            value: Some(10_000),
+            offset: Some(1000),
+            currency_code: Some("IDR".to_string()),
+        }),
+        background: None,
+    }
+}
+
 fn extract_context_info(base: &wa::Message) -> Option<&wa::ContextInfo> {
     if let Some(ext) = &base.extended_text_message {
         return ext.context_info.as_deref();
@@ -134,30 +155,6 @@ fn resolve_media_target(ctx: &MessageContext) -> Option<MediaRef<'_>> {
 
     let quoted = extract_context_info(base).and_then(|info| info.quoted_message.as_ref())?;
     media_from_message(quoted)
-}
-
-fn parse_delay_arg(args: &str) -> Result<(String, u64), String> {
-    let mut delay = DEFAULT_DELAY_SECS;
-    let mut plain_parts: Vec<&str> = Vec::new();
-
-    for token in args.split_whitespace() {
-        if let Some(raw_delay) = token.strip_prefix("-d=") {
-            delay = raw_delay
-                .parse::<u64>()
-                .map_err(|_| "Delay tidak valid. Contoh: -d=5".to_string())?;
-        } else {
-            plain_parts.push(token);
-        }
-    }
-
-    if delay < MIN_DELAY_SECS {
-        return Err(format!(
-            "Delay minimal {} detik untuk menghindari spam/ban.",
-            MIN_DELAY_SECS
-        ));
-    }
-
-    Ok((plain_parts.join(" ").trim().to_string(), delay))
 }
 
 async fn build_broadcast_message(
@@ -325,20 +322,15 @@ pub async fn broadcast_groups(
         return Ok(());
     }
 
-    let (text, delay_secs) = match parse_delay_arg(args) {
-        Ok(parsed) => parsed,
-        Err(msg) => {
-            XigmaBot::reply(ctx, &msg, true).await?;
-            return Ok(());
-        }
-    };
+    let text = args.trim().to_string();
+    let delay_secs = config::broadcast_delay_secs();
 
     let payload = match build_broadcast_message(ctx, &text).await {
         Ok(msg) => msg,
         Err(_) => {
             XigmaBot::reply(
                 ctx,
-                "Contoh:\n- /bcg Halo semua grup -d=5\n- kirim/reply gambar|video|audio lalu /bcg <caption opsional> -d=3",
+                "Contoh:\n- /bcg Halo semua grup\n- kirim/reply gambar|video|audio lalu /bcg <caption opsional>",
                 true,
             )
             .await?;

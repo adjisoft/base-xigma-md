@@ -8,6 +8,8 @@ pub mod menu;
 pub mod owner;
 pub mod owner_tools;
 pub mod ping;
+pub mod request_payment_message;
+pub mod settings;
 pub mod sticker;
 pub mod swgc;
 pub mod ytdl;

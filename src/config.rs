@@ -11,6 +11,14 @@ fn default_bot_mode() -> String {
     "public".to_string()
 }
 
+fn default_queue_delay() -> u64 {
+    2
+}
+
+fn default_broadcast_delay() -> u64 {
+    3
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename = "BotConfig")]
 pub struct BotConfig {
@@ -26,6 +34,10 @@ pub struct BotConfig {
     pub method_login: String,
     #[serde(rename = "BOT_MODE", default = "default_bot_mode")]
     pub bot_mode: String,
+    #[serde(rename = "QUEUE_DELAY", default = "default_queue_delay")]
+    pub queue_delay: u64,
+    #[serde(rename = "BROADCAST_DELAY", default = "default_broadcast_delay")]
+    pub broadcast_delay: u64,
     #[serde(rename = "BLACKLIST_GROUP", default)]
     pub blacklist_group: Vec<String>,
 }
@@ -166,6 +178,38 @@ pub fn set_bot_mode(mode: &str) -> Result<()> {
 
     let mut cfg = CONFIG.write().expect("gagal write lock config");
     cfg.bot_mode = normalized;
+    save_config(&cfg)?;
+    Ok(())
+}
+
+pub fn queue_delay_secs() -> u64 {
+    let cfg = CONFIG.read().expect("gagal read lock config");
+    cfg.queue_delay.max(1)
+}
+
+pub fn set_queue_delay(secs: u64) -> Result<()> {
+    if secs < 1 {
+        return Err(anyhow!("queue delay minimal 1 detik"));
+    }
+
+    let mut cfg = CONFIG.write().expect("gagal write lock config");
+    cfg.queue_delay = secs;
+    save_config(&cfg)?;
+    Ok(())
+}
+
+pub fn broadcast_delay_secs() -> u64 {
+    let cfg = CONFIG.read().expect("gagal read lock config");
+    cfg.broadcast_delay.max(1)
+}
+
+pub fn set_broadcast_delay(secs: u64) -> Result<()> {
+    if secs < 1 {
+        return Err(anyhow!("broadcast delay minimal 1 detik"));
+    }
+
+    let mut cfg = CONFIG.write().expect("gagal write lock config");
+    cfg.broadcast_delay = secs;
     save_config(&cfg)?;
     Ok(())
 }

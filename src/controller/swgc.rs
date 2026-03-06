@@ -7,9 +7,6 @@ use whatsapp_rust::bot::MessageContext;
 use whatsapp_rust::download::MediaType;
 use whatsapp_rust::proto_helpers::MessageExt;
 
-const DEFAULT_DELAY_SECS: u64 = 3;
-const MIN_DELAY_SECS: u64 = 3;
-
 enum MediaRef<'a> {
     Image(&'a wa::message::ImageMessage),
     Video(&'a wa::message::VideoMessage),
@@ -77,30 +74,6 @@ fn status_text_style(text: &str) -> wa::Message {
     }
 }
 
-fn parse_delay_arg(args: &str) -> Result<(String, u64), String> {
-    let mut delay = DEFAULT_DELAY_SECS;
-    let mut plain_parts: Vec<&str> = Vec::new();
-
-    for token in args.split_whitespace() {
-        if let Some(raw_delay) = token.strip_prefix("-d=") {
-            delay = raw_delay
-                .parse::<u64>()
-                .map_err(|_| "Delay tidak valid. Contoh: -d=5".to_string())?;
-        } else {
-            plain_parts.push(token);
-        }
-    }
-
-    if delay < MIN_DELAY_SECS {
-        return Err(format!(
-            "Delay minimal {} detik untuk menghindari spam/ban.",
-            MIN_DELAY_SECS
-        ));
-    }
-
-    Ok((plain_parts.join(" ").trim().to_string(), delay))
-}
-
 pub async fn handle(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std::error::Error>> {
     let sender = ctx.info.source.sender.to_string();
     if !config::is_owner(&sender) {
@@ -108,13 +81,8 @@ pub async fn handle(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std:
         return Ok(());
     }
 
-    let (text, delay_secs) = match parse_delay_arg(args) {
-        Ok(parsed) => parsed,
-        Err(msg) => {
-            XigmaBot::reply(ctx, &msg, true).await?;
-            return Ok(());
-        }
-    };
+    let text = args.trim().to_string();
+    let delay_secs = config::broadcast_delay_secs();
 
     let nested_message = if let Some(media) = resolve_media_target(ctx) {
         match media {
@@ -204,7 +172,7 @@ pub async fn handle(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std:
         if text.is_empty() {
             XigmaBot::reply(
                 ctx,
-                "Contoh:\n- /swgc teks status -d=5\n- reply gambar/video/audio lalu /swgc <caption opsional> -d=3",
+                "Contoh:\n- /swgc teks status\n- reply gambar/video/audio lalu /swgc <caption opsional>",
                 true,
             )
             .await?;

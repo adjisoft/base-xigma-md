@@ -140,12 +140,12 @@ Session disimpan di:
 ### Command owner/moderasi
 - `/debug`, `/d`
 - `/addowner <tag|reply|nomor>`
-- `/mode`, `/setmode <self|public>`
+- `/set <opsi> <value>`
 - `/setthumb`, `/setthumbnail <url>`
 - `/gid`, `/groupid`
 - `/bl`, `/blacklist [id_grup]`
-- `/bcg`, `/bcgroup`, `/broadcastgroup <teks/reply media> -d=<detik>`
-- `/gstatus`, `/swgc <teks/reply media> -d=<detik>`
+- `/bcg`, `/bcgroup`, `/broadcastgroup <teks/reply media>`
+- `/gstatus`, `/swgc <teks/reply media>`
 
 ### Command sticker
 - `/sticker`, `/s`, `/stiker`

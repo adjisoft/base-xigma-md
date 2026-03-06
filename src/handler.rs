@@ -5,7 +5,6 @@ use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
 use whatsapp_rust::bot::MessageContext;
 
-const BASE_COMMAND_DELAY_SECS: u64 = 2;
 const MAX_SPAM_PENALTY_SECS: u64 = 30;
 
 #[derive(Clone, Copy)]
@@ -42,12 +41,14 @@ async fn blocked_by_spam(ctx: &MessageContext) -> Result<bool, Box<dyn std::erro
     if ctx.info.source.is_from_me || config::is_owner(&sender) {
         return Ok(false);
     }
+    let base_delay_secs = config::queue_delay_secs();
+    let base_delay = Duration::from_secs(base_delay_secs);
 
     let key = sender;
     let now = Instant::now();
     let mut state_map = SPAM_GUARD.lock().await;
     let state = state_map.entry(key).or_insert(SpamState {
-        last_command_at: now - Duration::from_secs(BASE_COMMAND_DELAY_SECS),
+        last_command_at: now - base_delay,
         blocked_until: None,
         strikes: 0,
     });
@@ -70,7 +71,7 @@ async fn blocked_by_spam(ctx: &MessageContext) -> Result<bool, Box<dyn std::erro
     state.last_command_at = now;
     state.blocked_until = None;
 
-    if since_last < Duration::from_secs(BASE_COMMAND_DELAY_SECS) {
+    if since_last < base_delay {
         state.strikes = state.strikes.saturating_add(1).min(10);
         let penalty = (u64::from(state.strikes) * 2).min(MAX_SPAM_PENALTY_SECS);
         state.blocked_until = Some(now + Duration::from_secs(penalty));
@@ -108,10 +109,15 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
     };
 
     let noprefix = chars.as_str();
-    let mut bagian = noprefix.split_whitespace();
-
-    let cmd = bagian.next().unwrap_or("");
-    let args = bagian.collect::<Vec<&str>>().join(" ");
+    let cmd_end = noprefix
+        .find(char::is_whitespace)
+        .unwrap_or(noprefix.len());
+    let cmd = noprefix[..cmd_end].trim();
+    let args = if cmd_end < noprefix.len() {
+        noprefix[cmd_end..].trim_start().to_string()
+    } else {
+        String::new()
+    };
 
     if blocked_by_mode(ctx).await? {
         return Ok(());
@@ -132,8 +138,11 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
         "ping" | "speed" => controller::ping::handle(ctx).await?,
         "owner" | "own" => controller::owner::handle(ctx).await?,
         "addowner" => controller::owner_tools::add_owner(ctx, &args).await?,
-        "mode" | "setmode" => controller::owner_tools::set_mode(ctx, &args).await?,
         "setthumb" | "setthumbnail" => controller::owner_tools::set_thumbnail(ctx, &args).await?,
+        "set" => controller::settings::handle(ctx, &args).await?,
+        "requestpay" | "requestpayment" | "rpm" | "test" => {
+            controller::request_payment_message::handle(ctx, &args).await?
+        },
         "gid" | "groupid" => controller::group_tools::group_id(ctx).await?,
         "bl" | "blacklist" => controller::group_tools::blacklist(ctx, &args).await?,
         "bcg" | "bcgroup" | "broadcastgroup" => {

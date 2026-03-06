@@ -104,32 +104,3 @@ pub async fn set_thumbnail(
 
     Ok(())
 }
-
-pub async fn set_mode(ctx: &MessageContext, args: &str) -> Result<(), Box<dyn std::error::Error>> {
-    if !ensure_owner(ctx).await? {
-        return Ok(());
-    }
-
-    let mode = args.trim().to_lowercase();
-    if mode.is_empty() {
-        let current = config::bot_mode();
-        XigmaBot::reply(
-            ctx,
-            &format!("Mode saat ini: `{}`\nContoh: /mode self atau /mode public", current),
-            true,
-        )
-        .await?;
-        return Ok(());
-    }
-
-    match config::set_bot_mode(&mode) {
-        Ok(()) => {
-            XigmaBot::reply(ctx, &format!("Mode bot diubah ke `{}`.", mode), true).await?;
-        }
-        Err(e) => {
-            XigmaBot::reply(ctx, &format!("Gagal ubah mode: {}", e), true).await?;
-        }
-    }
-
-    Ok(())
-}
