@@ -1,5 +1,5 @@
 Menu Xigma-MD 2026
-Halo @42383458721992
+Halo @261478229758045
 
 Informasi Bot:
 - Nama: Xigma-MD
@@ -16,6 +16,11 @@ Daftar Menu (auto-sync):
 • */owner, /own*
 • */addowner* <nomor/tag/reply>
 • */setthumb, /setthumbnail* <url>
+• */kick* <tag/reply>
+• */add* <nomor,nomor2,...>
+• */group* <close/open>
+• */pin* <reply pesan>
+• */unpin* <reply pesan>
 • */set* <opsi> <value>
 • */gid, /groupid*
 • */bl, /blacklist* <id_grup (opsional)>

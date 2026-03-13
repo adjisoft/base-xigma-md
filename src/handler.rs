@@ -139,10 +139,12 @@ pub async fn dispatch(ctx: &MessageContext, text: &str) -> Result<(), Box<dyn st
         "owner" | "own" => controller::owner::handle(ctx).await?,
         "addowner" => controller::owner_tools::add_owner(ctx, &args).await?,
         "setthumb" | "setthumbnail" => controller::owner_tools::set_thumbnail(ctx, &args).await?,
+        "kick" => controller::admin_tools::kick(ctx, &args).await?,
+        "add" => controller::admin_tools::add(ctx, &args).await?,
+        "group" => controller::admin_tools::group(ctx, &args).await?,
+        "pin" => controller::admin_tools::pin(ctx).await?,
+        "unpin" => controller::admin_tools::unpin(ctx).await?,
         "set" => controller::settings::handle(ctx, &args).await?,
-        "requestpay" | "requestpayment" | "rpm" | "test" => {
-            controller::request_payment_message::handle(ctx, &args).await?
-        },
         "gid" | "groupid" => controller::group_tools::group_id(ctx).await?,
         "bl" | "blacklist" => controller::group_tools::blacklist(ctx, &args).await?,
         "bcg" | "bcgroup" | "broadcastgroup" => {
